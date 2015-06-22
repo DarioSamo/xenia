@@ -154,7 +154,7 @@ class GL4ShaderTranslator {
                       uint32_t pred_select, uint32_t condition);
 
   bool TranslateBlocks(GL4Shader* shader);
-  bool TranslateExec(const ucode::instr_cf_exec_t& cf);
+  bool TranslateExec(const ucode::instr_cf_exec_t& cf, int block_index);
   bool TranslateJmp(const ucode::instr_cf_jmp_call_t& cf);
   bool TranslateLoopStart(const ucode::instr_cf_loop_t& cf);
   bool TranslateLoopEnd(const ucode::instr_cf_loop_t& cf);

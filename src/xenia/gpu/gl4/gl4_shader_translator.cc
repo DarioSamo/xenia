@@ -112,7 +112,6 @@ std::string GL4ShaderTranslator::TranslateVertexShader(
   // TODO: Implement only for the used loops in the shader
   for (uint32_t n = 0; n < 32; n++) {
     Append("  int i%d_cnt = 0;\n", n);
-    Append("  int i%d_addr = 0;\n", n);
   }
 #endif
 
@@ -153,7 +152,6 @@ std::string GL4ShaderTranslator::TranslatePixelShader(
   // TODO: Implement only for the used loops in the shader
   for (uint32_t n = 0; n < 32; n++) {
     Append("  int i%d_cnt = 0;\n", n);
-    Append("  int i%d_addr = 0;\n", n);
   }
 #endif
 
@@ -1463,6 +1461,8 @@ bool GL4ShaderTranslator::TranslateBlocks(GL4Shader* shader) {
   instr_cf_t cfb;
   auto data = shader->data();
   bool needs_break = false;
+  int block_index = 0;
+
   for (uint32_t idx = 0; idx < shader->dword_count(); idx += 3) {
     uint32_t dword_0 = data[idx + 0];
     uint32_t dword_1 = data[idx + 1];
@@ -1480,17 +1480,21 @@ bool GL4ShaderTranslator::TranslateBlocks(GL4Shader* shader) {
 #endif  // FLOW_CONTROL
         needs_break = false;
       }
-      TranslateExec(cfa.exec);
+      TranslateExec(cfa.exec, block_index);
       needs_break = true;
+	  block_index++;
     } else if (cfa.opc == COND_JMP) {
       TranslateJmp(cfa.jmp_call);
+	  block_index++;
     }
 #if FLOW_CONTROL
     else if (cfa.opc == LOOP_START) {
       TranslateLoopStart(cfa.loop);
+	  block_index++;
     }
     else if (cfa.opc == LOOP_END) {
       TranslateLoopEnd(cfa.loop);
+	  block_index++;
     }
 #endif  // FLOW_CONTROL
 
@@ -1504,16 +1508,20 @@ bool GL4ShaderTranslator::TranslateBlocks(GL4Shader* shader) {
         needs_break = false;
       }
       needs_break = true;
-      TranslateExec(cfb.exec);
+      TranslateExec(cfb.exec, block_index);
+	  block_index++;
     } else if (cfb.opc == COND_JMP) {
       TranslateJmp(cfb.jmp_call);
+	  block_index++;
     }
 #if FLOW_CONTROL
     else if (cfb.opc == LOOP_START) {
       TranslateLoopStart(cfb.loop);
+	  block_index++;
     }
     else if (cfb.opc == LOOP_END) {
       TranslateLoopEnd(cfb.loop);
+	  block_index++;
     }
 #endif
 
@@ -1564,7 +1572,7 @@ static const struct {
 #undef INSTR
 };
 
-bool GL4ShaderTranslator::TranslateExec(const instr_cf_exec_t& cf) {
+bool GL4ShaderTranslator::TranslateExec(const instr_cf_exec_t& cf, int block_index) {
   Append("  // %s ADDR(0x%x) CNT(0x%x)", cf_instructions[cf.opc].name,
          cf.address, cf.count);
   if (cf.yeild) {
@@ -1587,6 +1595,7 @@ bool GL4ShaderTranslator::TranslateExec(const instr_cf_exec_t& cf) {
 
 #if FLOW_CONTROL
   Append(" case 0x%x:\n", cf.address);
+  Append(" case 0x%x:\n", 0xF000+block_index);
 #endif  // FLOW_CONTROL
 
   if (cf.is_cond_exec()) {
@@ -1688,7 +1697,7 @@ bool GL4ShaderTranslator::TranslateJmp(const ucode::instr_cf_jmp_call_t& cf) {
   if (cf.address_mode == ABSOLUTE_ADDR) {
     Append(" pc = 0x%x;\n", cf.address);
   } else {
-    Append(" pc = pc + 0x%x;\n", cf.address);
+    Append(" pc = 0xF000 + 0x%x;\n", cf.address);
   }
   if (!cf.force_call) {
 #if FLOW_CONTROL
@@ -1707,7 +1716,6 @@ bool GL4ShaderTranslator::TranslateLoopStart(const ucode::instr_cf_loop_t& cf) {
     Append(" ABSOLUTE_ADDR");
   }
   Append("\n");
-  Append(" i%d_addr = pc;\n", cf.loop_id);
   Append(" i%d_cnt = 0;\n", cf.loop_id);
   return true;
 }
@@ -1716,7 +1724,12 @@ bool GL4ShaderTranslator::TranslateLoopEnd(const ucode::instr_cf_loop_t& cf) {
   Append("  // %s", cf_instructions[cf.opc].name);
   Append(" ADDR(0x%x) LOOP ID(%d)\n", cf.address, cf.loop_id);
   Append(" i%d_cnt = i%d_cnt + 1;\n", cf.loop_id, cf.loop_id);
-  Append(" pc = (i%d_cnt < state.loop_consts[%d]) ? i%d_addr : pc;\n", cf.loop_id, cf.loop_id, cf.loop_id);
+
+  // TODO(dariosamo): Remove the safeguard limit of 16 loops when loop consts gives
+  // consistent, not insane values (like 30k at the moment) to prevent GPUs from frying
+  Append(" if (i%d_cnt < 16) {\n", cf.loop_id);
+  Append("  pc = (i%d_cnt < state.loop_consts[%d]) ? 0x%x : pc;\n", cf.loop_id, cf.loop_id, 0xF000 + cf.address, cf.loop_id);
+  Append(" }\n");
   return true;
 }
 
