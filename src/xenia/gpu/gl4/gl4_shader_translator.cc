@@ -146,6 +146,17 @@ std::string GL4ShaderTranslator::TranslatePixelShader(
   for (uint32_t n = 0; n <= std::max(15u, temp_regs); n++) {
     Append("  vec4 r%d = state.float_consts[%d];\n", n, n + 256);
   }
+
+#if FLOW_CONTROL
+  // Add temporary integer registers for loops that we may use.
+  // Each loop uses an address, counter, and constant
+  // TODO: Implement only for the used loops in the shader
+  for (uint32_t n = 0; n < 32; n++) {
+    Append("  int i%d_cnt = 0;\n", n);
+    Append("  int i%d_addr = 0;\n", n);
+  }
+#endif
+
   Append("  vec4 t;\n");
   Append("  vec4 pv;\n");   // Previous Vector result.
   Append("  float ps;\n");  // Previous Scalar result (used for RETAIN_PREV).
@@ -1478,6 +1489,9 @@ bool GL4ShaderTranslator::TranslateBlocks(GL4Shader* shader) {
     else if (cfa.opc == LOOP_START) {
       TranslateLoopStart(cfa.loop);
     }
+    else if (cfa.opc == LOOP_END) {
+      TranslateLoopEnd(cfa.loop);
+    }
 #endif  // FLOW_CONTROL
 
     if (cfb.opc == ALLOC) {
@@ -1495,6 +1509,9 @@ bool GL4ShaderTranslator::TranslateBlocks(GL4Shader* shader) {
       TranslateJmp(cfb.jmp_call);
     }
 #if FLOW_CONTROL
+    else if (cfb.opc == LOOP_START) {
+      TranslateLoopStart(cfb.loop);
+    }
     else if (cfb.opc == LOOP_END) {
       TranslateLoopEnd(cfb.loop);
     }
