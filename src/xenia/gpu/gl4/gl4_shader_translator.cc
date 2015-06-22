@@ -14,8 +14,6 @@
 #include "xenia/base/math.h"
 #include "xenia/gpu/gpu-private.h"
 
-#define FLOW_CONTROL 1
-
 namespace xe {
 namespace gpu {
 namespace gl4 {
