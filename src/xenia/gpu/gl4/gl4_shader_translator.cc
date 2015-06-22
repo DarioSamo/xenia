@@ -14,6 +14,8 @@
 #include "xenia/base/math.h"
 #include "xenia/gpu/gpu-private.h"
 
+#define FLOW_CONTROL 1
+
 namespace xe {
 namespace gpu {
 namespace gl4 {
@@ -1493,7 +1495,7 @@ bool GL4ShaderTranslator::TranslateBlocks(GL4Shader* shader) {
       TranslateLoopEnd(cfa.loop);
     }
 #endif  // FLOW_CONTROL
-    block_index++;
+    if (cfa.opc != ALLOC) block_index++;
 
     if (cfb.opc == ALLOC) {
       // ?
@@ -1517,7 +1519,7 @@ bool GL4ShaderTranslator::TranslateBlocks(GL4Shader* shader) {
       TranslateLoopEnd(cfb.loop);
     }
 #endif
-    block_index++;
+    if (cfb.opc != ALLOC) block_index++;
 
     if (cfa.opc == EXEC_END || cfb.opc == EXEC_END) {
       break;
