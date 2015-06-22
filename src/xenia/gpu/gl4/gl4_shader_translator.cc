@@ -1482,21 +1482,18 @@ bool GL4ShaderTranslator::TranslateBlocks(GL4Shader* shader) {
       }
       TranslateExec(cfa.exec, block_index);
       needs_break = true;
-	  block_index++;
     } else if (cfa.opc == COND_JMP) {
       TranslateJmp(cfa.jmp_call);
-	  block_index++;
     }
 #if FLOW_CONTROL
     else if (cfa.opc == LOOP_START) {
       TranslateLoopStart(cfa.loop);
-	  block_index++;
     }
     else if (cfa.opc == LOOP_END) {
       TranslateLoopEnd(cfa.loop);
-	  block_index++;
     }
 #endif  // FLOW_CONTROL
+    block_index++;
 
     if (cfb.opc == ALLOC) {
       // ?
@@ -1509,21 +1506,18 @@ bool GL4ShaderTranslator::TranslateBlocks(GL4Shader* shader) {
       }
       needs_break = true;
       TranslateExec(cfb.exec, block_index);
-	  block_index++;
     } else if (cfb.opc == COND_JMP) {
       TranslateJmp(cfb.jmp_call);
-	  block_index++;
     }
 #if FLOW_CONTROL
     else if (cfb.opc == LOOP_START) {
       TranslateLoopStart(cfb.loop);
-	  block_index++;
     }
     else if (cfb.opc == LOOP_END) {
       TranslateLoopEnd(cfb.loop);
-	  block_index++;
     }
 #endif
+    block_index++;
 
     if (cfa.opc == EXEC_END || cfb.opc == EXEC_END) {
       break;
